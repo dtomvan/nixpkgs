@@ -12,6 +12,8 @@
 let
   inherit (lib) mkOption types;
   pathOrStr = types.coercedTo types.path (x: "${x}") types.str;
+
+  automaticReloadCommand = "${pkgs.coreutils}/bin/kill -${config.process.reloadSignal} $MAINPID";
 in
 {
   # https://nixos.org/manual/nixos/unstable/#modular-services
@@ -90,13 +92,16 @@ in
   config = {
     assertions = [
       {
-        assertion = config.process.reloadSignal != null && config.process.reloadCommand != null;
+        assertion =
+          config.process.reloadSignal != null
+          && config.process.reloadCommand != null
+          && config.process.reloadCommand != automaticReloadCommand;
         message = "reloadSignal conflicts with reloadCommand. Please either use reloadSignal or reloadCommand.";
       }
     ];
 
-    process.reloadCommand = (lib.mkIf config.process.reloadSignal != null) (
-      lib.mkForce "${pkgs.coreutils}/bin/kill -${config.process.reloadSignal} $MAINPID"
+    process.reloadCommand = lib.mkIf (config.process.reloadSignal != null) (
+      lib.mkForce automaticReloadCommand
     );
   };
 }
